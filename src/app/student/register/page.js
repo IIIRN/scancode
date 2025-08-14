@@ -1,17 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+// Import ที่จำเป็น รวมถึง Suspense
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { db } from '@/lib/firebase';
+import { db } from '../../../lib/firebase';
 import { collection, getDocs, addDoc, query, where, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { QRCodeSVG } from 'qrcode.react';
 import useLiff from '../../../hooks/useLiff';
 
-export default function LiffStudentRegistrationPage() {
+/**
+ * Component หลักที่บรรจุ Logic ทั้งหมดของหน้า
+ * เราแยกส่วนนี้ออกมาเพื่อให้สามารถครอบด้วย <Suspense> ได้
+ */
+function RegistrationComponent() {
   const { userProfile, isLoading: isLiffLoading, error: liffError } = useLiff();
   const searchParams = useSearchParams();
   const activityIdFromUrl = searchParams.get('activityId');
 
+  // State สำหรับฟอร์มและข้อมูล
   const [courses, setCourses] = useState([]);
   const [activities, setActivities] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -22,6 +28,7 @@ export default function LiffStudentRegistrationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Effect: ดึงข้อมูลตั้งต้น (หลักสูตร) และ pre-select กิจกรรมถ้ามี ID มาใน URL
   useEffect(() => {
     const fetchInitialData = async () => {
       const coursesSnapshot = await getDocs(collection(db, 'courses'));
@@ -41,6 +48,7 @@ export default function LiffStudentRegistrationPage() {
     fetchInitialData();
   }, [activityIdFromUrl]);
 
+  // Effect: ดึงกิจกรรมที่เกี่ยวข้องเมื่อมีการเลือกหลักสูตร
   useEffect(() => {
     if (!selectedCourse) {
       setActivities([]);
@@ -55,6 +63,7 @@ export default function LiffStudentRegistrationPage() {
     fetchActivities();
   }, [selectedCourse, activityIdFromUrl]);
   
+  // Effect: ตรวจสอบสถานะการลงทะเบียนทันทีที่ผู้ใช้เลือกกิจกรรม
   useEffect(() => {
     if (!userProfile || !selectedActivity) return;
     const checkExistingRegistration = async () => {
@@ -69,6 +78,7 @@ export default function LiffStudentRegistrationPage() {
     checkExistingRegistration();
   }, [userProfile, selectedActivity]);
 
+  // ฟังก์ชันจัดการการส่งฟอร์ม
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -98,6 +108,7 @@ export default function LiffStudentRegistrationPage() {
     }
   };
 
+  // --- ส่วนแสดงผล ---
   if (isLiffLoading) return <div className="flex justify-center items-center h-screen font-sans">กำลังเชื่อมต่อกับ LINE...</div>;
   if (liffError) return <div className="p-4 text-center text-red-600 bg-red-100 font-sans">{liffError}</div>;
   if (!userProfile) return <div className="flex justify-center items-center h-screen font-sans">ไม่สามารถโหลดข้อมูลโปรไฟล์ LINE ได้</div>;
@@ -148,5 +159,18 @@ export default function LiffStudentRegistrationPage() {
         )}
       </div>
     </div>
+  );
+}
+
+
+/**
+ * Component หลักของหน้าเพจ ทำหน้าที่ครอบ Component ด้านบนด้วย Suspense
+ * เพื่อแก้ไขปัญหา Build Error ที่เกี่ยวกับ useSearchParams
+ */
+export default function LiffStudentRegistrationPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-screen font-sans">กำลังโหลดหน้าลงทะเบียน...</div>}>
+      <RegistrationComponent />
+    </Suspense>
   );
 }
