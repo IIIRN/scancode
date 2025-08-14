@@ -34,12 +34,21 @@ export default function AdminScannerPage() {
   const scannerRef = useRef(null);
 
   // Effect สำหรับจัดการการสร้างและทำลาย object ของ Scanner ตามโหมด
-  useEffect(() => {
+ 
+useEffect(() => {
     if (mode === 'scan' && !scannerRef.current) {
-      const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: qrboxFunction }, false);
+      // 👇 สร้าง object สำหรับตั้งค่าโดยเฉพาะ
+      const config = {
+        fps: 10,
+        qrbox: qrboxFunction,
+        videoConstraints: {
+            facingMode: "environment" // 👈 เพิ่มส่วนนี้เพื่อเลือกกล้องหลัง
+        }
+      };
+      const scanner = new Html5QrcodeScanner("reader", config, false);
       scanner.render(handleScanSuccess, () => {});
       scannerRef.current = scanner;
-    } else if (mode === 'manual' && scannerRef.current) {
+    }  else if (mode === 'manual' && scannerRef.current) {
       scannerRef.current.clear().catch(err => console.error("Scanner clear failed", err));
       scannerRef.current = null;
     }
