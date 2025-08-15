@@ -76,7 +76,8 @@ function RegistrationComponent() {
     try {
       const docRef = await addDoc(collection(db, 'registrations'), registrationData);
       
-      const notificationMessage = `คุณได้ลงทะเบียนเข้าร่วมกิจกรรม "${activity.name}" สำเร็จแล้ว! 🚀`;
+      const notificationMessage = `คุณได้ลงทะเบียนเข้าร่วมกิจกรรม '${activityName}' สำเร็จแล้ว! 🚀...`;
+
       await fetch('/api/send-notification', { /* ... */ });
       
       setRegistration({ id: docRef.id, ...registrationData });

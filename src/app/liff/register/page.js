@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import liff from '@line/liff';
 import { db } from '../../../lib/firebase';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-// 👇 1. เปลี่ยนวิธีการ import มาเป็นแบบ Named Import
+import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react'; 
 
 export default function RegisterLiffPage() {
@@ -80,7 +80,13 @@ export default function RegisterLiffPage() {
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
       <h1>ระบบลงทะเบียน</h1>
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
-          <img src={userProfile.pictureUrl} width="80" height="80" alt="Profile" style={{ borderRadius: '50%' }} />
+            <Image 
+            src={userProfile.pictureUrl} 
+            alt={userProfile.displayName}
+            width={64} // Specify width
+            height={64} // Specify height
+            className="w-16 h-16 rounded-full border-2 border-white"
+          />
           <h2>สวัสดี, {userProfile.displayName}!</h2>
       </div>
 

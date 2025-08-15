@@ -7,6 +7,7 @@ import useLiff from '../hooks/useLiff';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { useStudentContext } from '../context/StudentContext';
+import Image from 'next/image'; // Add import
 
 // --- Modal Component for Linking Profile ---
 const LinkProfileModal = ({ liffProfile, onClose, onProfileLinked }) => {
@@ -112,8 +113,13 @@ export default function StudentHeader() {
       <header className="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 shadow-md text-white sticky top-0 z-40 font-sans">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
-            <img src={liffProfile?.pictureUrl} alt={displayName || 'Profile'} className="w-14 h-14 rounded-full border-2 border-white/80 bg-gray-400"/>
-            <div>
+<Image 
+    src={liffProfile?.pictureUrl} 
+    alt={displayName || 'Profile'}
+    width={56} // Specify width
+    height={56} // Specify height
+    className="w-14 h-14 rounded-full border-2 border-white/80 bg-gray-400"
+  />            <div>
               <h1 className="font-bold text-lg">{displayName}</h1>
               <p className="text-xs text-white/80">{displaySubText}</p>
             </div>
