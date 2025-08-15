@@ -1,28 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '../lib/firebase'; // ปรับ path ให้ถูกต้อง
-import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const MOCK_PROFILE = {
+    // โปรไฟล์จำลองจาก LINE
     liffProfile: {
         userId: 'U_PC_USER_001',
         displayName: 'คุณทดสอบ (PC Mode)',
         pictureUrl: 'https://via.placeholder.com/150'
     },
-    // จำลองว่าผู้ใช้ใหม่บน PC ยังไม่มีโปรไฟล์ใน DB
-    studentDbProfile: null 
+    // โปรไฟล์จำลองจาก DB (เราจะปล่อยเป็น undefined เพื่อให้ระบบไปค้นหาจริง)
+    studentDbProfile: undefined 
 };
 
 export default function useLiff() {
   const [liffProfile, setLiffProfile] = useState(null);
-  const [studentDbProfile, setStudentDbProfile] = useState(null); // 👈 State ใหม่สำหรับโปรไฟล์ใน DB
+  const [studentDbProfile, setStudentDbProfile] = useState(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [liffObject, setLiffObject] = useState(null);
 
   useEffect(() => {
+    let unsubscribeFromProfile = () => {};
+
     const initialize = async () => {
+      let profileFromLiff = null;
+
       try {
         const liff = (await import('@line/liff')).default;
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
@@ -31,42 +36,57 @@ export default function useLiff() {
         await liff.init({ liffId });
         setLiffObject(liff);
 
-        if (!liff.isInClient()) {
-          console.warn("Running on PC. Using MOCK_PROFILE.");
-          setLiffProfile(MOCK_PROFILE.liffProfile);
-          setStudentDbProfile(MOCK_PROFILE.studentDbProfile);
-          setIsLoading(false);
-          return;
-        }
-
-        if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          setLiffProfile(profile);
-          
-          // --- 👈 ส่วนที่เพิ่มเข้ามา ---
-          // หลังจากได้โปรไฟล์ LINE แล้ว ให้ไปค้นหาโปรไฟล์ใน Firestore ทันที
-          const studentDocRef = doc(db, 'studentProfiles', profile.userId);
-          const studentDocSnap = await getDoc(studentDocRef);
-
-          if (studentDocSnap.exists()) {
-            setStudentDbProfile(studentDocSnap.data());
+        // --- 👇 ส่วน Logic ที่ปรับปรุงใหม่ ---
+        if (liff.isInClient()) {
+          // กรณีเปิดในแอป LINE
+          if (liff.isLoggedIn()) {
+            profileFromLiff = await liff.getProfile();
+            setLiffProfile(profileFromLiff);
           } else {
-            setStudentDbProfile(null); // คืนค่า null ถ้าไม่เจอ
+            liff.login();
+            return; // รอ redirect
           }
-          // --- สิ้นสุดส่วนที่เพิ่มเข้ามา ---
-
         } else {
-          liff.login();
+          // กรณีเปิดบน PC
+          console.warn("Running on PC. Using MOCK LIFF PROFILE.");
+          profileFromLiff = MOCK_PROFILE.liffProfile;
+          setLiffProfile(profileFromLiff);
         }
+
+        // --- ส่วนการดึงข้อมูลโปรไฟล์จาก DB ที่ตอนนี้จะทำงานเสมอ ---
+        if (profileFromLiff) {
+          const studentDocRef = doc(db, 'studentProfiles', profileFromLiff.userId);
+          
+          unsubscribeFromProfile = onSnapshot(studentDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+              setStudentDbProfile(docSnap.data());
+            } else {
+              setStudentDbProfile(null);
+            }
+            setIsLoading(false);
+          }, (err) => {
+            console.error("Error listening to student profile:", err);
+            setError("เกิดข้อผิดพลาดในการดึงข้อมูลโปรไฟล์");
+            setIsLoading(false);
+          });
+        } else {
+            // กรณีที่ไม่สามารถหาโปรไฟล์ LIFF ได้เลย
+            setIsLoading(false);
+        }
+
       } catch (err) {
         setError(`LIFF Error: ${err.message}`);
-      } finally {
         setIsLoading(false);
       }
     };
-    initialize();
-  }, []);
 
-  // คืนค่า state ทั้งหมด รวมถึงโปรไฟล์จาก DB
+    initialize();
+
+    // Cleanup function
+    return () => {
+      unsubscribeFromProfile();
+    };
+  }, []); // ทำงานแค่ครั้งเดียว
+
   return { liffObject, liffProfile, studentDbProfile, isLoading, error, setStudentDbProfile };
 };

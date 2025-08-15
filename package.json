@@ -21,8 +21,10 @@
     "html5-qrcode": "^2.3.8",
     "leaflet": "^1.9.4",
     "next": "15.4.4",
+    "papaparse": "^5.5.3",
     "qrcode.react": "^4.2.0",
     "react": "19.1.0",
+    "react-csv": "^2.2.2",
     "react-dom": "19.1.0",
     "react-leaflet": "^5.0.0"
   },
