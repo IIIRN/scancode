@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import useLiff from '../hooks/useLiff'; // อัปเดต path ตามตำแหน่งไฟล์
+import useLiff from '../hooks/useLiff'; // ตรวจสอบว่า path ถูกต้อง
 
 export default function StudentHeader() {
-  const { userProfile, isLoading } = useLiff();
+  // ดึงโปรไฟล์ทั้ง 2 แบบ (จาก LINE และจาก Firestore DB) ออกมาจาก Hook
+  const { liffProfile, studentDbProfile, isLoading } = useLiff();
   const pathname = usePathname();
 
   const navLinks = [
@@ -13,28 +14,41 @@ export default function StudentHeader() {
     { name: 'การลงทะเบียนของฉัน', href: '/student/my-registrations' },
   ];
 
-  if (isLoading) {
-    // แสดง UI ชั่วคราวระหว่างรอโหลดโปรไฟล์
+  if (isLoading || !liffProfile) {
+    // UI ชั่วคราวระหว่างรอโหลดข้อมูลโปรไฟล์ทั้งหมด
     return (
       <header className="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 shadow-md text-white animate-pulse">
-        <div className="h-8 bg-white/20 rounded w-3/4"></div>
+        <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-4 mb-4">
+                <div className="w-14 h-14 rounded-full bg-white/30"></div>
+                <div>
+                    <div className="h-4 bg-white/30 rounded w-24 mb-2"></div>
+                    <div className="h-3 bg-white/20 rounded w-32"></div>
+                </div>
+            </div>
+            <div className="flex justify-center bg-black/20 rounded-lg p-1 h-10"></div>
+        </div>
       </header>
     );
   }
 
+  // เลือกว่าจะแสดงชื่อและข้อมูลจากไหนเป็นหลัก
+  const displayName = studentDbProfile?.fullName || liffProfile?.displayName;
+  const displaySubText = studentDbProfile?.studentId ? `รหัส: ${studentDbProfile.studentId}` : "กรุณาตั้งค่าโปรไฟล์";
+
   return (
-    <header className="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 shadow-md text-white sticky top-0 z-40">
+    <header className="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 shadow-md text-white sticky top-0 z-40 font-sans">
       <div className="max-w-4xl mx-auto">
         {/* ส่วนโปรไฟล์ */}
         <div className="flex items-center gap-4 mb-4">
           <img 
-            src={userProfile?.pictureUrl} 
-            alt={userProfile?.displayName}
-            className="w-14 h-14 rounded-full border-2 border-white/80"
+            src={liffProfile?.pictureUrl} 
+            alt={displayName || 'Profile'}
+            className="w-14 h-14 rounded-full border-2 border-white/80 bg-gray-400"
           />
           <div>
-            <p className="text-sm">สวัสดี,</p>
-            <h1 className="font-bold text-lg">{userProfile?.displayName}</h1>
+            <h1 className="font-bold text-lg">{displayName}</h1>
+            <p className="text-xs text-white/80">{displaySubText}</p>
           </div>
         </div>
         

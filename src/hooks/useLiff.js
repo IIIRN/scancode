@@ -1,67 +1,72 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { db } from '../lib/firebase'; // ปรับ path ให้ถูกต้อง
+import { doc, getDoc } from 'firebase/firestore';
 
-// ข้อมูลจำลองสำหรับใช้เมื่อเปิดบน PC
 const MOCK_PROFILE = {
-    userId: 'U_PC_USER_001',
-    displayName: 'คุณทดสอบ (PC Mode)',
-    pictureUrl: 'https://via.placeholder.com/150'
+    liffProfile: {
+        userId: 'U_PC_USER_001',
+        displayName: 'คุณทดสอบ (PC Mode)',
+        pictureUrl: 'https://via.placeholder.com/150'
+    },
+    // จำลองว่าผู้ใช้ใหม่บน PC ยังไม่มีโปรไฟล์ใน DB
+    studentDbProfile: null 
 };
 
-/**
- * Custom Hook สำหรับ LIFF ที่ตรวจจับสภาพแวดล้อมอัตโนมัติ
- * - ถ้าเปิดในแอป LINE: ใช้ข้อมูลจริง
- * - ถ้าเปิดบน PC/เบราว์เซอร์อื่น: ใช้ข้อมูลจำลอง (Mock)
- */
 export default function useLiff() {
-  const [userProfile, setUserProfile] = useState(null);
+  const [liffProfile, setLiffProfile] = useState(null);
+  const [studentDbProfile, setStudentDbProfile] = useState(null); // 👈 State ใหม่สำหรับโปรไฟล์ใน DB
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [liffObject, setLiffObject] = useState(null);
 
   useEffect(() => {
-    const initializeLiff = async () => {
+    const initialize = async () => {
       try {
         const liff = (await import('@line/liff')).default;
         const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+        if (!liffId) throw new Error("LIFF ID is not defined");
         
-        if (!liffId) {
-          throw new Error("LIFF ID is not defined in .env.local (NEXT_PUBLIC_LIFF_ID)");
-        }
-        
-        // 1. สั่ง init LIFF ก่อนเสมอ เพื่อให้เราสามารถใช้ฟังก์ชันอื่นๆ ของมันได้
         await liff.init({ liffId });
         setLiffObject(liff);
 
-        // 2. ใช้ liff.isInClient() เพื่อตัดสินใจ
-        if (liff.isInClient()) {
-          // --- กรณีเปิดในแอป LINE ---
-          console.log("Running in LIFF client. Using real profile.");
-          if (liff.isLoggedIn()) {
-            const profile = await liff.getProfile();
-            setUserProfile(profile);
-          } else {
-            // ถ้าอยู่ในแอป LINE แต่ยังไม่ล็อกอิน ให้บังคับล็อกอิน
-            liff.login();
-            return; // ไม่ต้องทำอะไรต่อ รอ redirect
-          }
-        } else {
-          // --- กรณีเปิดบน PC หรือเบราว์เซอร์ภายนอก ---
-          console.warn("Running outside of LIFF client (e.g., on PC). Using MOCK_PROFILE.");
-          setUserProfile(MOCK_PROFILE);
+        if (!liff.isInClient()) {
+          console.warn("Running on PC. Using MOCK_PROFILE.");
+          setLiffProfile(MOCK_PROFILE.liffProfile);
+          setStudentDbProfile(MOCK_PROFILE.studentDbProfile);
+          setIsLoading(false);
+          return;
         }
 
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          setLiffProfile(profile);
+          
+          // --- 👈 ส่วนที่เพิ่มเข้ามา ---
+          // หลังจากได้โปรไฟล์ LINE แล้ว ให้ไปค้นหาโปรไฟล์ใน Firestore ทันที
+          const studentDocRef = doc(db, 'studentProfiles', profile.userId);
+          const studentDocSnap = await getDoc(studentDocRef);
+
+          if (studentDocSnap.exists()) {
+            setStudentDbProfile(studentDocSnap.data());
+          } else {
+            setStudentDbProfile(null); // คืนค่า null ถ้าไม่เจอ
+          }
+          // --- สิ้นสุดส่วนที่เพิ่มเข้ามา ---
+
+        } else {
+          liff.login();
+        }
       } catch (err) {
-        console.error("LIFF initialization failed:", err);
         setError(`LIFF Error: ${err.message}`);
       } finally {
         setIsLoading(false);
       }
     };
+    initialize();
+  }, []);
 
-    initializeLiff();
-  }, []); // ทำงานแค่ครั้งเดียว
-
-  return { liffObject, userProfile, isLoading, error };
+  // คืนค่า state ทั้งหมด รวมถึงโปรไฟล์จาก DB
+  return { liffObject, liffProfile, studentDbProfile, isLoading, error, setStudentDbProfile };
 };
