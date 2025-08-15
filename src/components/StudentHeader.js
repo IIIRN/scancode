@@ -21,7 +21,7 @@ const LinkProfileModal = ({ liffProfile, onClose, onProfileLinked }) => {
         setError('');
         try {
             const regQuery = query(
-                collection(db, 'registrations'), 
+                collection(db, 'registrations'),
                 where("nationalId", "==", nationalId.trim()),
                 where("lineUserId", "==", null)
             );
@@ -58,7 +58,7 @@ const LinkProfileModal = ({ liffProfile, onClose, onProfileLinked }) => {
             setIsSubmitting(false);
         }
     };
-    
+
     return (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm font-sans">
@@ -82,7 +82,7 @@ const LinkProfileModal = ({ liffProfile, onClose, onProfileLinked }) => {
 // --- Main Header Component ---
 export default function StudentHeader() {
   const { liffProfile, studentDbProfile, isLoading, setStudentDbProfile } = useLiff();
-  const { isLinkModalOpen, setIsLinkModalOpen } = useStudentContext(); 
+  const { isLinkModalOpen, setIsLinkModalOpen } = useStudentContext();
   const pathname = usePathname();
 
   const navLinks = [
@@ -97,14 +97,14 @@ export default function StudentHeader() {
       </header>
     );
   }
-  
+
   const displayName = studentDbProfile?.fullName || liffProfile?.displayName;
   const displaySubText = studentDbProfile?.studentId ? `ID: ${studentDbProfile.studentId}` : "ยังไม่ได้เชื่อมข้อมูล";
 
   return (
     <>
       {isLinkModalOpen && (
-        <LinkProfileModal 
+        <LinkProfileModal
           liffProfile={liffProfile}
           onClose={() => setIsLinkModalOpen(false)}
           onProfileLinked={(newProfile) => setStudentDbProfile(newProfile)}
@@ -113,8 +113,8 @@ export default function StudentHeader() {
       <header className="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 shadow-md text-white sticky top-0 z-40 font-sans">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
-<Image 
-    src={liffProfile?.pictureUrl} 
+<Image
+    src={liffProfile?.pictureUrl}
     alt={displayName || 'Profile'}
     width={56} // Specify width
     height={56} // Specify height
@@ -124,7 +124,7 @@ export default function StudentHeader() {
               <p className="text-xs text-white/80">{displaySubText}</p>
             </div>
           </div>
-          
+
           {!isLoading && !studentDbProfile && (
             <button onClick={() => setIsLinkModalOpen(true)} className="w-full text-center py-2 mb-4 bg-yellow-400 text-yellow-900 font-bold rounded-lg text-sm hover:bg-yellow-300 transition-colors">
               คลิกเพื่อเชื่อมข้อมูลโปรไฟล์ของคุณ

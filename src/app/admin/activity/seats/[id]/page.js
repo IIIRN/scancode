@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import Link from 'next/link';
 import { db } from '../../../../../lib/firebase';
-import { 
-  doc, getDoc, updateDoc, collection, query, 
-  where, getDocs, writeBatch, serverTimestamp, deleteDoc 
+import {
+  doc, getDoc, updateDoc, collection, query,
+  where, getDocs, writeBatch, serverTimestamp, deleteDoc
 } from 'firebase/firestore';
 import { CSVLink } from "react-csv";
 import Papa from "papaparse";
 
 export default function SeatAssignmentPage({ params }) {
   const { id: activityId } = use(params);
-  
+
   const [activity, setActivity] = useState(null);
   const [registrants, setRegistrants] = useState([]);
   const [seatInputs, setSeatInputs] = useState({});
@@ -22,7 +22,7 @@ export default function SeatAssignmentPage({ params }) {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
 
   // Function to fetch the latest data for the page
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const activityDoc = await getDoc(doc(db, 'activities', activityId));
       if (activityDoc.exists()) {
@@ -47,18 +47,18 @@ export default function SeatAssignmentPage({ params }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activityId]);
 
   useEffect(() => {
     setIsLoading(true);
     fetchData();
-  }, [activityId]);
+  }, [activityId, fetchData]);
 
   // Handle CSV file upload and parsing
   const handleFileUpload = (e) => {
     if (!e.target.files.length) return;
     const file = e.target.files[0];
-    
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -128,7 +128,7 @@ export default function SeatAssignmentPage({ params }) {
     try {
       const registrantDocRef = doc(db, 'registrations', registrantId);
       await updateDoc(registrantDocRef, { seatNumber: seatToAssign });
-      setRegistrants(prev => prev.map(r => 
+      setRegistrants(prev => prev.map(r =>
         r.id === registrantId ? { ...r, seatNumber: seatToAssign } : r
       ));
     } catch (error) {
@@ -152,7 +152,7 @@ export default function SeatAssignmentPage({ params }) {
         setMessage(`เกิดข้อผิดพลาดในการลบ: ${err.message}`);
     }
   };
-  
+
   // Save all seat changes at once
   const handleSaveAllSeats = async () => {
     if (!window.confirm("คุณต้องการบันทึกการเปลี่ยนแปลงเลขที่นั่งทั้งหมดหรือไม่?")) return;
@@ -237,7 +237,7 @@ export default function SeatAssignmentPage({ params }) {
           </div>
           <p className="text-xs text-gray-500 text-center md:text-right">คอลัมน์ที่ต้องมี: `fullName`, `studentId`, `nationalId`</p>
         </div>
-        
+
         {message && <p className="text-center mb-4 font-semibold text-blue-700">{message}</p>}
 
         {registrants.length > 0 && (
@@ -277,16 +277,16 @@ export default function SeatAssignmentPage({ params }) {
                         </td>
                         <td className="p-2">
                             <div className="flex items-center gap-2">
-                                <input 
-                                    type="text" 
-                                    placeholder="ที่นั่ง" 
-                                    value={seatInputs[reg.id] || ''} 
-                                    onChange={(e) => handleSeatInputChange(reg.id, e.target.value)} 
+                                <input
+                                    type="text"
+                                    placeholder="ที่นั่ง"
+                                    value={seatInputs[reg.id] || ''}
+                                    onChange={(e) => handleSeatInputChange(reg.id, e.target.value)}
                                     className="p-2 border border-gray-300 rounded-md w-24"
                                 />
-                                <button 
-                                    onClick={() => handleAssignSeat(reg.id)} 
-                                    disabled={savingStates[reg.id]} 
+                                <button
+                                    onClick={() => handleAssignSeat(reg.id)}
+                                    disabled={savingStates[reg.id]}
                                     className="px-3 py-2 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-700 disabled:bg-gray-400"
                                 >
                                     {savingStates[reg.id] ? '...' : 'บันทึก'}
@@ -294,8 +294,8 @@ export default function SeatAssignmentPage({ params }) {
                             </div>
                         </td>
                         <td className="p-2">
-                            <button 
-                                onClick={() => handleDeleteRegistrant(reg.id, reg.fullName)} 
+                            <button
+                                onClick={() => handleDeleteRegistrant(reg.id, reg.fullName)}
                                 className="text-red-500 hover:text-red-700 text-sm font-semibold"
                             >
                                 ลบ
